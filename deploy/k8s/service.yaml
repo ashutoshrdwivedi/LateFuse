@@ -1,0 +1,23 @@
+# ClusterIP service with session affinity as a basic sticky routing fallback.
+# The primary sticky routing is handled by the Ingress consistent-hash annotation.
+apiVersion: v1
+kind: Service
+metadata:
+  name: lora-serving
+  namespace: lora-serving
+  labels:
+    app.kubernetes.io/name: lora-serving
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: lora-serving
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+  # Fallback sticky routing: same client IP → same pod for 1 hour
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600

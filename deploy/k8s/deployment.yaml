@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lora-serving
+  namespace: lora-serving
+  labels:
+    app.kubernetes.io/name: lora-serving
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: lora-serving
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: lora-serving
+    spec:
+      # Schedule only on GPU nodes (DigitalOcean GPU Droplets)
+      tolerations:
+        - key: "nvidia.com/gpu"
+          operator: "Exists"
+          effect: "NoSchedule"
+
+      containers:
+        - name: inference
+          image: registry.digitalocean.com/YOUR_REGISTRY/lora-serving:latest
+          ports:
+            - containerPort: 8080
+              name: http
+
+          # Environment from ConfigMap + Secret
+          envFrom:
+            - configMapRef:
+                name: lora-serving-config
+            - secretRef:
+                name: lora-serving-s3-creds
+
+          resources:
+            requests:
+              cpu: "4"
+              memory: "8Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "8"
+              memory: "16Gi"
+              nvidia.com/gpu: "1"
+
+          # Startup probe: model loading takes 30-60s, give it 5 minutes
+          startupProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30   # 10s * 30 = 5 minutes max startup
+
+          # Readiness: only accept traffic after model is loaded
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+
+          # Liveness: restart if process hangs
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+
+          volumeMounts:
+            - name: adapter-cache
+              mountPath: /tmp/adapters
+
+      volumes:
+        - name: adapter-cache
+          emptyDir:
+            sizeLimit: 10Gi   # local cache for downloaded adapters
+
+  # Keep at least 1 pod available during rolling updates
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1

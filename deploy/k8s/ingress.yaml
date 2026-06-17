@@ -1,0 +1,53 @@
+# NGINX Ingress with consistent-hash sticky routing on X-Tenant-Id header.
+#
+# How it works:
+#   1. Client sends POST /predict with header "X-Tenant-Id: tenant_42"
+#   2. NGINX hashes "tenant_42" and routes to a deterministic backend pod
+#   3. Same tenant_id always hits the same pod → adapter is already in GPU memory
+#   4. When pods scale up/down, NGINX's consistent hash remaps only ~1/N tenants
+#
+# Prerequisites:
+#   - NGINX Ingress Controller installed:
+#     kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/do/deploy.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lora-serving
+  namespace: lora-serving
+  labels:
+    app.kubernetes.io/name: lora-serving
+  annotations:
+    # --- Consistent-hash sticky routing ---
+    # Hash the X-Tenant-Id header to pick a backend pod.
+    # Same tenant_id → same pod (until pod set changes).
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$http_x_tenant_id"
+
+    # Use a consistent hash ring (not simple modulo) so scaling
+    # only remaps ~1/N tenants instead of all of them.
+    nginx.ingress.kubernetes.io/upstream-hash-by-subset: "true"
+
+    # --- Timeouts ---
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "10"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+
+    # --- Request size (for large text payloads) ---
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+
+    # --- DigitalOcean Load Balancer ---
+    # If using DO LB in front of Ingress, set these:
+    # service.beta.kubernetes.io/do-loadbalancer-protocol: "http"
+    # service.beta.kubernetes.io/do-loadbalancer-algorithm: "round_robin"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: lora-serving.example.com   # Replace with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lora-serving
+                port:
+                  name: http

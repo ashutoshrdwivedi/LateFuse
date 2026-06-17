@@ -1,0 +1,52 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+wheels/
+*.egg-info/
+*.egg
+
+# Unit test / coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+coverage.xml
+.pytest_cache/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# uv
+#   uv.lock is committed for reproducibility.
+
+# Ruff / mypy caches
+.ruff_cache/
+.mypy_cache/
+
+# Editors / IDE
+.idea/
+.vscode/
+.cursorignore
+.cursorindexingignore
+
+# OS cruft
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+
+# Agent / local config
+.claude/
+.rsyncignore

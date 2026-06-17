@@ -1,0 +1,57 @@
+# HorizontalPodAutoscaler for GPU inference pods.
+#
+# Scales based on GPU utilization via DCGM Exporter custom metrics.
+# If DCGM is not installed, you can fall back to CPU-based scaling
+# or use KEDA with Prometheus query on request queue depth.
+#
+# Prerequisites for GPU-based scaling:
+#   1. Install NVIDIA DCGM Exporter: https://github.com/NVIDIA/dcgm-exporter
+#   2. Install Prometheus Adapter for custom metrics
+#   3. Register the dcgm_gpu_utilization metric
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: lora-serving
+  namespace: lora-serving
+  labels:
+    app.kubernetes.io/name: lora-serving
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: lora-serving
+  minReplicas: 2
+  maxReplicas: 10
+
+  metrics:
+    # Primary: scale on GPU utilization (requires DCGM exporter)
+    # Uncomment when DCGM is set up:
+    # - type: Pods
+    #   pods:
+    #     metric:
+    #       name: dcgm_gpu_utilization
+    #     target:
+    #       type: AverageValue
+    #       averageValue: "70"   # scale up when avg GPU util > 70%
+
+    # Fallback: scale on CPU utilization (always available)
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60    # wait 1 min before scaling up
+      policies:
+        - type: Pods
+          value: 1                      # add 1 pod at a time
+          periodSeconds: 120            # at most every 2 min (GPU pods are expensive)
+    scaleDown:
+      stabilizationWindowSeconds: 300   # wait 5 min before scaling down
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 300
