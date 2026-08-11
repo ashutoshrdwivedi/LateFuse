@@ -6,7 +6,7 @@ set -u
 export HOME=/root
 export PATH=$HOME/.local/bin:$PATH
 export PYTHONUNBUFFERED=1
-cd /root/lora_scaling
+cd /root/LateFuse
 R=benchmarks/results
 mkdir -p "$R"
 M="BAAI/bge-m3"

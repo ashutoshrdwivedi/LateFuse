@@ -33,8 +33,16 @@ class LoraOps:
             x:         (B, S, H) — input hidden states
             a_weights: (B, H, R) — stacked A matrices for each sample in the batch
         """
-        assert x.is_cuda, "x must be on GPU"
-        assert a_weights.is_cuda, "a_weights must be on GPU"
+        # Device *match* rather than "must be CUDA": on a serving run the
+        # buffers live on config.device (a GPU), so this enforces exactly the
+        # same thing, while letting CPU-only tests exercise this code path
+        # instead of a separate one.
+        assert x.device == self._out_A.device, (
+            f"x on {x.device} but LoraOps buffers on {self._out_A.device}"
+        )
+        assert a_weights.device == self._out_A.device, (
+            f"a_weights on {a_weights.device} but buffers on {self._out_A.device}"
+        )
         # bmm with a mismatched `out=` silently resizes the buffer, defeating
         # the pre-allocation — inputs must match the init-time (B, S, H, R).
         B, S, R = self._out_A.shape
@@ -56,7 +64,9 @@ class LoraOps:
 
         Call shrink() before expand(). Result is available via .output.
         """
-        assert b_weights.is_cuda, "b_weights must be on GPU"
+        assert b_weights.device == self._out_B.device, (
+            f"b_weights on {b_weights.device} but buffers on {self._out_B.device}"
+        )
         B, S, R = self._out_A.shape
         H = self._out_B.shape[2]
         assert b_weights.shape == (B, R, H), (

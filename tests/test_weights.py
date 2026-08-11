@@ -4,7 +4,7 @@ import torch
 import pytest
 from lora_serving.config import LoraServingConfig
 from lora_serving.weights.store import AdapterStore, LoraWeight
-from lora_serving.weights.batch import BatchAssembler
+from lora_serving.weights.batch import BatchAssembler, IndexSelectBatchAssembler
 
 
 @pytest.fixture
@@ -111,3 +111,62 @@ class TestBatchAssembler:
 
         assert lr_w.coef.shape[1] == 7  # max labels
         assert lr_w.num_labels == [3, 7]
+
+
+class TestIndexSelectBatchAssembler:
+    """The index_select assembler must be a drop-in for BatchAssembler: the
+    batched weights it produces have to be bit-identical, since the encoder
+    forward is fully determined by those tensors."""
+
+    def _store(self, config, n=6):
+        store = AdapterStore(config)
+        for i in range(n):
+            # Distinct seeds so every adapter's A matrix differs — a wrong
+            # row-index mapping would then surface as a mismatch.
+            store.load_synthetic(f"adapter_{i}", seed=100 + i)
+            # B is zero-initialised by load_synthetic; perturb it so wb is also
+            # adapter-specific and the B-gather is exercised too.
+            torch.nn.init.normal_(store.get(f"adapter_{i}").wb[config.target_modules[0]], std=0.02)
+        return store
+
+    def test_packed_shapes(self, config):
+        store = self._store(config, n=5)
+        asm = IndexSelectBatchAssembler(store, config)
+        N, L, H, R = 5, config.num_layers, config.hidden_size, config.lora_rank
+        for m in config.target_modules:
+            assert asm.wa[m].shape == (N, L, H, R)
+            assert asm.wb[m].shape == (N, L, R, H)
+
+    def test_matches_baseline_assemble(self, config):
+        store = self._store(config, n=6)
+        baseline = BatchAssembler(store, config)
+        fast = IndexSelectBatchAssembler(store, config)
+
+        # Repeated and out-of-order IDs: catches any positional assumption.
+        ids = ["adapter_3", "adapter_0", "adapter_3", "adapter_5"]
+
+        ref = baseline.assemble_lora(ids)          # list[LayerwiseBatchedWeights]
+        got = fast.to_layerwise(ids)               # list[LayerwiseBatchedWeights]
+
+        assert len(got) == len(ref) == config.num_layers
+        for layer_idx in range(config.num_layers):
+            for m in config.target_modules:
+                ref_a = torch.cat(ref[layer_idx].a[m], dim=0)   # (B, H, R)
+                ref_b = torch.cat(ref[layer_idx].b[m], dim=0)   # (B, R, H)
+                got_a = torch.cat(got[layer_idx].a[m], dim=0)
+                got_b = torch.cat(got[layer_idx].b[m], dim=0)
+                assert torch.equal(got_a, ref_a)
+                assert torch.equal(got_b, ref_b)
+
+    def test_batch_index_maps_ids_to_rows(self, config):
+        store = self._store(config, n=4)
+        fast = IndexSelectBatchAssembler(store, config)
+        idx = fast.batch_index(["adapter_2", "adapter_0", "adapter_2"])
+        assert idx.tolist() == [2, 0, 2]
+        assert idx.dtype == torch.long
+
+    def test_unknown_id_raises(self, config):
+        store = self._store(config, n=2)
+        fast = IndexSelectBatchAssembler(store, config)
+        with pytest.raises(KeyError):
+            fast.batch_index(["nonexistent"])

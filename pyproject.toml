@@ -47,6 +47,9 @@ explicit = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "real_checkpoints: equivalence checks against the multi-GB generality-row checkpoints (needs CUDA; deselect with -m 'not real_checkpoints')",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "UP", "I"]

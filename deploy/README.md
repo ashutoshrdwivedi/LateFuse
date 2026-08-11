@@ -56,7 +56,7 @@ Production deployment of the `lora_serving` inference engine on DigitalOcean Man
 
 ```bash
 # From the repo root
-cd /path/to/lora_scaling
+cd /path/to/LateFuse
 
 # Build (bakes in the base model — ~2GB image)
 docker build -f deploy/Dockerfile -t lora-serving:latest .

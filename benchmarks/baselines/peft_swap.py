@@ -55,12 +55,18 @@ def build_base_model(model_name: str, dtype: torch.dtype, device: torch.device):
     return base
 
 
-def build_peft_model(model_name: str, lora_rank: int, dtype: torch.dtype, device: torch.device):
+def build_peft_model(
+    model_name: str,
+    lora_rank: int,
+    dtype: torch.dtype,
+    device: torch.device,
+    target_modules: list[str] | None = None,
+):
     """Load base + wrap with PEFT, returning model with adapter named 'adapter_0'."""
     base = AutoModel.from_pretrained(model_name, torch_dtype=dtype)
     cfg = LoraConfig(
         r=lora_rank, lora_alpha=lora_rank,
-        target_modules=["query", "value"],
+        target_modules=target_modules or ["query", "value"],
         lora_dropout=0.0, bias="none",
     )
     model = get_peft_model(base, cfg, adapter_name="adapter_0")
@@ -161,6 +167,7 @@ def build_for_config(
     dtype: torch.dtype,
     device: torch.device,
     mode: str,
+    target_modules: list[str] | None = None,
 ):
     """Build the model + adapters once. Returns (model, adapter_ids, runner, add_time_s).
 
@@ -173,7 +180,7 @@ def build_for_config(
         return model, ["adapter_0"], run_base, 0.0
 
     print(f"  Building PEFT model + adding {num_adapters} adapters...", flush=True)
-    model, lora_cfg = build_peft_model(model_name, lora_rank, dtype, device)
+    model, lora_cfg = build_peft_model(model_name, lora_rank, dtype, device, target_modules)
     t0 = time.perf_counter()
     add_n_adapters(model, lora_cfg, num_adapters, device, dtype)
     add_time_s = time.perf_counter() - t0
@@ -254,6 +261,11 @@ def main():
     parser.add_argument("--warmup", type=int, default=20)
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--mode", choices=["sequential", "grouped", "homogeneous", "mixed", "base"], default="sequential")
+    parser.add_argument(
+        "--target-modules", nargs="+", default=["query", "value"],
+        help="Projection module names for LoRA — model-specific: BERT/RoBERTa "
+             "family uses 'query value'; DeBERTa-v2 uses 'query_proj value_proj'.",
+    )
     parser.add_argument("--out", default="peft_baseline.csv")
     args = parser.parse_args()
 
@@ -275,7 +287,8 @@ def main():
         for lora_rank in args.lora_ranks:
             try:
                 model, adapter_ids, runner, add_time_s = build_for_config(
-                    args.model, num_adapters, lora_rank, dtype, device, args.mode
+                    args.model, num_adapters, lora_rank, dtype, device, args.mode,
+                    args.target_modules,
                 )
             except Exception as e:
                 print(f"  BUILD ERROR ({type(e).__name__}) at adapters={num_adapters} rank={lora_rank}: {e}", flush=True)

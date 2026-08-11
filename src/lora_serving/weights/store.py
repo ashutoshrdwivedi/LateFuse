@@ -130,6 +130,21 @@ class AdapterStore:
             raise KeyError(f"Adapter '{adapter_id}' not found. Call load_from_file() or load_synthetic() first.")
         return self._store[adapter_id]
 
+    def evict(self, adapter_id: str) -> None:
+        """Remove a resident adapter so its GPU tensors can be released."""
+        if adapter_id not in self._store:
+            raise KeyError(f"Adapter '{adapter_id}' is not resident.")
+        del self._store[adapter_id]
+
+    def adapter_ids(self) -> list[str]:
+        """All loaded adapter IDs in insertion order.
+
+        The order is stable for the lifetime of the store and defines the row
+        index each adapter occupies in a packed tensor (see
+        :class:`~lora_serving.weights.batch.IndexSelectBatchAssembler`).
+        """
+        return list(self._store.keys())
+
     def __len__(self) -> int:
         return len(self._store)
 
