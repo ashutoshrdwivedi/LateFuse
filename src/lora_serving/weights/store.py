@@ -124,6 +124,17 @@ class AdapterStore:
             torch.nn.init.zeros_(weight.wb[m])  # B=0 means delta=0, safe for correctness tests
         self._store[adapter_id] = weight
 
+    def insert(self, adapter_id: str, weight: LoraWeight) -> None:
+        """Make an already-populated LoraWeight resident under ``adapter_id``.
+
+        The load_* helpers build the weight and insert it in one step; this is
+        the seam for callers that need to control how the tensors get filled --
+        e.g. staging through a pinned host buffer so the host-to-device copy can
+        overlap with compute, which the benchmark in
+        :mod:`lora_serving.benchmark.churn` measures against the plain path.
+        """
+        self._store[adapter_id] = weight
+
     def get(self, adapter_id: str) -> LoraWeight:
         """Retrieve a pre-loaded adapter by ID."""
         if adapter_id not in self._store:
