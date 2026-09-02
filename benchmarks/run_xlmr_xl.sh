@@ -81,7 +81,7 @@ if free < 20: print('  WARNING: <20 GB free; the ~14 GB checkpoint may not fit')
 " || { echo "PREFLIGHT FAILED"; exit 1; }
 
 echo "=== [0b/5] smoke test (fail fast before burning the pod) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --engine hf --dtype fp16 --adapters 100 --batch-sizes 8 \
   --lora-ranks 8 --target-modules query value --seq-len 128 --warmup 5 --iters 10 \
   --out "$R/smoke_$TAG.csv" > "$R/smoke_$TAG.log" 2>&1
@@ -107,7 +107,7 @@ echo "  metadata rc=$?"
 # back-to-back within each seed pass (one thermal envelope), matching the
 # paper's rationale for not running ranks as a separate later sweep.
 echo "=== [2/5] LateFuse sweep, full grid, 5 seeds (~6h) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --engine hf --dtype fp16 \
   --adapters 100 1000 2000 4000 6000 8000 11000 \
   --batch-sizes 8 16 32 64 128 --lora-ranks 8 --target-modules query value \
@@ -132,7 +132,7 @@ fi
 # so a spare cell costs a few minutes, never fails the run, and leaves a record
 # of exactly where the card gave out.
 echo "=== [3/5] capacity probe (OOM ceiling) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --engine hf --dtype fp16 \
   --adapters 11000 12000 13000 14000 --batch-sizes 32 --lora-ranks 8 \
   --target-modules query value --seq-len 128 --warmup 50 --iters 200 \

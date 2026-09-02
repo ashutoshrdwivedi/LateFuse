@@ -11,7 +11,7 @@
 # This row runs on the HF hook wrapper (--engine hf), like the DeBERTa and
 # XLM-R-XL rows. ELECTRA checkpoints ship no pooler, and the custom encoder's
 # loader is strict about every parameter it declares, so it rejects them (see
-# src/lora_serving/model/encoder.py:205) rather than serving CLS through a
+# src/latefuse/model/encoder.py:205) rather than serving CLS through a
 # randomly-initialised pooler. The wrapper falls back to the raw CLS state,
 # which is what a pooler-less checkpoint's own HF forward returns.
 #
@@ -58,7 +58,7 @@ M="google/electra-large-discriminator"
 TAG=electra
 
 echo "=== [0/5] smoke test (fail fast before burning the pod) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --dtype fp16 --engine hf --adapters 100 --batch-sizes 8 \
   --lora-ranks 8 --seq-len 128 --warmup 5 --iters 10 \
   --out "$R/smoke_$TAG.csv" > "$R/smoke_$TAG.log" 2>&1
@@ -79,7 +79,7 @@ uv run python -m benchmarks.profiling.model_metadata \
 echo "  metadata rc=$?"
 
 echo "=== [2/5] LateFuse sweep, full grid, 5 seeds (~1h50m) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --dtype fp16 --engine hf \
   --adapters 100 1000 5000 10000 20000 47000 \
   --batch-sizes 8 16 32 64 128 --lora-ranks 8 \
@@ -104,7 +104,7 @@ fi
 # so a spare cell costs a few minutes, never fails the run, and leaves a record
 # of exactly where the card gave out.
 echo "=== [3/5] capacity probe (OOM ceiling) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --dtype fp16 --engine hf \
   --adapters 47000 49000 51000 53000 --batch-sizes 32 --lora-ranks 8 \
   --seq-len 128 --warmup 50 --iters 200 \

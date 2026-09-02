@@ -1,10 +1,10 @@
 """Tests for LoraOps and LRHeadOps correctness."""
 
-import torch
 import pytest
-from lora_serving.config import LoraServingConfig
-from lora_serving.ops.lora import LoraOps
-from lora_serving.ops.head import LRHeadOps
+import torch
+
+from latefuse.config import LoraServingConfig
+from latefuse.ops.lora import LoraOps
 
 
 @pytest.fixture

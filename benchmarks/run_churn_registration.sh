@@ -31,7 +31,7 @@ COMMON="--engine hf --model $M --dtype fp16 --lora-rank 8 --seq-len 128 \
 # Run at 10 admissions/s for 30 s => ~300 admissions per cell, enough for a
 # stable per-admission mean.
 echo "=== [1/4] registration cost by path (blocking) ==="
-uv run python -m lora_serving.benchmark.churn $COMMON \
+uv run python -m latefuse.benchmark.churn $COMMON \
   --resident 1000 47000 \
   --registration-paths synthetic file file_pinned \
   --churn-modes blocking \
@@ -46,7 +46,7 @@ uv run python -m lora_serving.benchmark.churn $COMMON \
 # *share*, not the per-admission cost, which phase 1 and the 10/s and 100/s
 # cells here establish.
 echo "=== [2/4] admission-rate sweep at N=1,000 ==="
-uv run python -m lora_serving.benchmark.churn $COMMON \
+uv run python -m latefuse.benchmark.churn $COMMON \
   --resident 1000 \
   --registration-paths file \
   --churn-modes blocking background \
@@ -59,7 +59,7 @@ uv run python -m lora_serving.benchmark.churn $COMMON \
 # a separate one, and mixing it into the main sweep is what produced the
 # non-monotonic cost curve in the previous churn harness.
 echo "=== [3/4] admission-rate sweep at the 47,000 ceiling ==="
-uv run python -m lora_serving.benchmark.churn $COMMON \
+uv run python -m latefuse.benchmark.churn $COMMON \
   --resident 47000 \
   --registration-paths file \
   --churn-modes blocking background \
@@ -72,7 +72,7 @@ uv run python -m lora_serving.benchmark.churn $COMMON \
 # CSV records whether POSIX_FADV_DONTNEED was actually honoured, so a platform
 # that silently ignored it cannot be mistaken for a fast cold read.
 echo "=== [4/4] cold page cache ==="
-uv run python -m lora_serving.benchmark.churn $COMMON \
+uv run python -m latefuse.benchmark.churn $COMMON \
   --resident 1000 \
   --registration-paths file file_pinned \
   --churn-modes blocking \

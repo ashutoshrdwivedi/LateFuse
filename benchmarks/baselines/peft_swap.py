@@ -22,7 +22,7 @@ Five modes:
                  throughput ceiling (N-independent), the upper bound any multi-tenant
                  serving system can aspire to. Run once per batch size (use --adapters 1).
 
-Output CSV is schema-compatible with `lora_serving.benchmark.run` so the two can be
+Output CSV is schema-compatible with `latefuse.benchmark.run` so the two can be
 merged for plotting. Extra columns: `harness=peft_<mode>`.
 
 Run :

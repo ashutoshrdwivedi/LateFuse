@@ -2,8 +2,8 @@
 
 import torch
 
-from lora_serving.config import LoraServingConfig
-from lora_serving.weights.store import AdapterStore
+from latefuse.config import LoraServingConfig
+from latefuse.weights.store import AdapterStore
 
 
 def make_synthetic_adapters(store: AdapterStore, n: int, seed: int = 42) -> None:

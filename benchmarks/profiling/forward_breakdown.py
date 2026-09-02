@@ -41,15 +41,15 @@ import numpy as np
 import torch
 from torch.profiler import ProfilerActivity, profile, record_function
 
-from lora_serving.benchmark.synthetic import (
+from latefuse.benchmark.synthetic import (
     make_synthetic_adapters,
     make_synthetic_inputs,
     make_synthetic_lr_weights,
 )
-from lora_serving.config import LoraServingConfig
-from lora_serving.model.encoder import EncoderWithLora
-from lora_serving.weights.batch import BatchAssembler
-from lora_serving.weights.store import AdapterStore
+from latefuse.config import LoraServingConfig
+from latefuse.model.encoder import EncoderWithLora
+from latefuse.weights.batch import BatchAssembler
+from latefuse.weights.store import AdapterStore
 
 DTYPE_MAP = {"fp16": torch.float16, "fp32": torch.float32, "bf16": torch.bfloat16}
 

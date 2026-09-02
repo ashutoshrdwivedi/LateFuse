@@ -25,7 +25,7 @@ WORKDIR /app
 COPY deploy/requirements.txt /app/deploy/requirements.txt
 RUN pip install --no-cache-dir -r /app/deploy/requirements.txt
 
-# Install the lora-serving package
+# Install the latefuse package
 COPY pyproject.toml /app/
 COPY src/ /app/src/
 RUN pip install --no-cache-dir -e .

@@ -11,7 +11,7 @@ mkdir -p "$R"
 
 
 echo "=== [1/2] churn sweep: Zipf alpha 1.0 ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --engine hf --model "BAAI/bge-m3" --dtype fp16 \
   --adapters 20000 30000 40000 47000 \
   --batch-sizes 8 16 32 64 128 --lora-ranks 8 \
@@ -20,7 +20,7 @@ uv run python -m lora_serving.benchmark.run \
   --out "benchmarks/results/churn_alpha_1p0.csv" > "benchmarks/results/churn_alpha_1p0.log" 2>&1
 
 echo "=== [1/4] churn sweep: Zipf alpha 1.1 ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --engine hf --model "BAAI/bge-m3" --dtype fp16 \
   --adapters 20000 30000 40000 47000 \
   --batch-sizes 8 16 32 64 128 --lora-ranks 8 \

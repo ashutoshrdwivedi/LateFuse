@@ -3,7 +3,7 @@
 The question is whether the O(N^2)-vs-O(1) cold-start result translates
 to production impact -- "what % of serving time is spent in adapter
 registration under realistic churn rates?".  Answering it needs three things
-the existing ``lora_serving.benchmark.run --churn`` path does not provide.
+the existing ``latefuse.benchmark.run --churn`` path does not provide.
 
 **1. Registration has to be the production path.**  The currently reported
 number (0.29 ms/adapter) comes from ``adapter_load_total_s / N`` on the
@@ -45,7 +45,7 @@ here is therefore one *replacement* = evict + register, with the two also
 reported separately for diagnosis.
 
 Run:
-    uv run python -m lora_serving.benchmark.churn \\
+    uv run python -m latefuse.benchmark.churn \\
         --corpus-dir /workspace/adapter_corpus \\
         --registration-paths synthetic file file_pinned \\
         --resident 1000 47000 \\
@@ -69,16 +69,16 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from lora_serving.benchmark.synthetic import (
+from latefuse.benchmark.synthetic import (
     make_synthetic_adapters,
     make_synthetic_inputs,
     make_synthetic_lr_weights,
 )
-from lora_serving.config import LoraServingConfig
-from lora_serving.model.encoder import EncoderWithLora
-from lora_serving.model.hf_wrapper import HFEncoderWithLora
-from lora_serving.weights.batch import BatchAssembler
-from lora_serving.weights.store import AdapterStore, LoraWeight
+from latefuse.config import LoraServingConfig
+from latefuse.model.encoder import EncoderWithLora
+from latefuse.model.hf_wrapper import HFEncoderWithLora
+from latefuse.weights.batch import BatchAssembler
+from latefuse.weights.store import AdapterStore, LoraWeight
 
 DTYPE_MAP = {"fp16": torch.float16, "fp32": torch.float32, "bf16": torch.bfloat16}
 

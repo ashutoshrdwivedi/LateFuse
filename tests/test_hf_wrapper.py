@@ -54,11 +54,11 @@ from transformers import (
     XLMRobertaXLModel,
 )
 
-from lora_serving.config import LoraServingConfig
-from lora_serving.model.encoder import EncoderWithLora
-from lora_serving.model.hf_wrapper import HFEncoderWithLora
-from lora_serving.weights.batch import BatchAssembler
-from lora_serving.weights.store import AdapterStore
+from latefuse.config import LoraServingConfig
+from latefuse.model.encoder import EncoderWithLora
+from latefuse.model.hf_wrapper import HFEncoderWithLora
+from latefuse.weights.batch import BatchAssembler
+from latefuse.weights.store import AdapterStore
 
 peft = pytest.importorskip("peft", reason="peft not installed")
 from peft import LoraConfig, get_peft_model
@@ -580,7 +580,8 @@ def test_dropped_wrapper_detaches_hooks_from_shared_base(tmp_path):
     path = _save_tiny(BertModel, BertConfig(**TINY, type_vocab_size=2), tmp_path)
     base = AutoModel.from_pretrained(path, torch_dtype=torch.float32)
     cfg = _serving_config(path, ["query", "value"])
-    count = lambda: sum(len(m._forward_hooks) for m in base.modules())
+    def count() -> int:
+        return sum(len(m._forward_hooks) for m in base.modules())
 
     for _ in range(3):
         model = HFEncoderWithLora(base, cfg)

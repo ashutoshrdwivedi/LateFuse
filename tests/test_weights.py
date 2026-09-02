@@ -1,10 +1,11 @@
 """Tests for AdapterStore and BatchAssembler."""
 
-import torch
 import pytest
-from lora_serving.config import LoraServingConfig
-from lora_serving.weights.store import AdapterStore, LoraWeight
-from lora_serving.weights.batch import BatchAssembler, IndexSelectBatchAssembler
+import torch
+
+from latefuse.config import LoraServingConfig
+from latefuse.weights.batch import BatchAssembler, IndexSelectBatchAssembler
+from latefuse.weights.store import AdapterStore
 
 
 @pytest.fixture

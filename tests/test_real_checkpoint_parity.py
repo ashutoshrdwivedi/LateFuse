@@ -26,10 +26,10 @@ import pytest
 import torch
 from transformers import AutoModel
 
-from lora_serving.config import LoraServingConfig
-from lora_serving.model.hf_wrapper import HFEncoderWithLora
-from lora_serving.weights.batch import BatchAssembler
-from lora_serving.weights.store import AdapterStore
+from latefuse.config import LoraServingConfig
+from latefuse.model.hf_wrapper import HFEncoderWithLora
+from latefuse.weights.batch import BatchAssembler
+from latefuse.weights.store import AdapterStore
 
 peft = pytest.importorskip("peft", reason="peft not installed")
 from peft import LoraConfig, get_peft_model

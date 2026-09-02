@@ -20,10 +20,10 @@ import torch
 from torch import Tensor
 from transformers import AutoModel
 
-from lora_serving.config import LoraServingConfig
-from lora_serving.model.encoder import EncoderWithLora
-from lora_serving.weights.batch import BatchAssembler, LayerwiseBatchedWeights
-from lora_serving.weights.store import AdapterStore, LoraWeight
+from latefuse.config import LoraServingConfig
+from latefuse.model.encoder import EncoderWithLora
+from latefuse.weights.batch import BatchAssembler, LayerwiseBatchedWeights
+from latefuse.weights.store import AdapterStore, LoraWeight
 
 pytestmark = pytest.mark.skipif(
     not torch.cuda.is_available(),
@@ -32,7 +32,6 @@ pytestmark = pytest.mark.skipif(
 
 peft = pytest.importorskip("peft", reason="peft not installed (install with `uv add --dev peft`)")
 from peft import LoraConfig
-
 
 MODEL_NAME = "intfloat/multilingual-e5-small"
 # Tiny XLM-RoBERTa (model_type "xlm-roberta", pad_token_id=1) for the mask-offset

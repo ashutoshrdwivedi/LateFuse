@@ -3,10 +3,10 @@
 Run on RunPod (or any GPU machine):
     pip install uv
     uv sync
-    uv run python -m lora_serving.benchmark.run
+    uv run python -m latefuse.benchmark.run
 
 Sweep options:
-    uv run python -m lora_serving.benchmark.run \\
+    uv run python -m latefuse.benchmark.run \\
         --model BAAI/bge-m3 \\
         --dtype fp16 \\
         --adapters 1000 5000 10000 20000 \\
@@ -31,16 +31,16 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from lora_serving.benchmark.synthetic import (
+from latefuse.benchmark.synthetic import (
     make_synthetic_adapters,
     make_synthetic_inputs,
     make_synthetic_lr_weights,
 )
-from lora_serving.config import LoraServingConfig
-from lora_serving.model.encoder import EncoderWithLora
-from lora_serving.model.hf_wrapper import HFEncoderWithLora
-from lora_serving.weights.batch import BatchAssembler
-from lora_serving.weights.store import AdapterStore
+from latefuse.config import LoraServingConfig
+from latefuse.model.encoder import EncoderWithLora
+from latefuse.model.hf_wrapper import HFEncoderWithLora
+from latefuse.weights.batch import BatchAssembler
+from latefuse.weights.store import AdapterStore
 
 DTYPE_MAP = {"fp16": torch.float16, "fp32": torch.float32, "bf16": torch.bfloat16}
 
@@ -72,7 +72,7 @@ def print_memory_ceiling(
     target_modules: list[str],
 ) -> None:
     """At startup: predict adapter ceiling for a representative config so the run is self-documenting."""
-    print(f"\n=== Memory ceiling (predicted) ===")
+    print("\n=== Memory ceiling (predicted) ===")
     print(f"  Model: {model_name}  dtype: {dtype}  VRAM budget: {vram_gb:.1f} GB")
     print(f"  Target modules: {target_modules}")
     for rank in (4, 8, 16, 32):

@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-from lora_serving.config import LoraServingConfig
+from latefuse.config import LoraServingConfig
 
 
 class LoraOps:

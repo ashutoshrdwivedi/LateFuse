@@ -14,10 +14,11 @@ from torch import Tensor, nn
 from transformers import AutoModel, PretrainedConfig, PreTrainedModel
 from transformers.activations import ACT2FN
 
-from lora_serving.config import LoraServingConfig
-from lora_serving.ops.head import LRHeadOps
-from lora_serving.ops.lora import LoraOps
-from lora_serving.weights.batch import BatchedLRWeights, LayerwiseBatchedWeights
+from latefuse.config import LoraServingConfig
+from latefuse.ops.head import LRHeadOps
+from latefuse.ops.lora import LoraOps
+from latefuse.ops.pooling import pool_tokens, validate_pooling
+from latefuse.weights.batch import BatchedLRWeights, LayerwiseBatchedWeights
 
 
 class AttentionWithLora(nn.Module):
@@ -193,7 +194,7 @@ class EncoderWithLora(PreTrainedModel):
         self.post_init()
 
     @classmethod
-    def from_pretrained_serving(cls, serving_config: LoraServingConfig) -> "EncoderWithLora":
+    def from_pretrained_serving(cls, serving_config: LoraServingConfig) -> EncoderWithLora:
         """Create the model and load base weights from HuggingFace."""
         from transformers import AutoConfig
         hf_config = AutoConfig.from_pretrained(serving_config.model_name)
@@ -235,31 +236,30 @@ class EncoderWithLora(PreTrainedModel):
         mask = input_ids.ne(self.pad_idx).int()
         return (torch.cumsum(mask, dim=1) * mask).long() + self.pad_idx
 
-    def forward(
+    def encode_pooled(
         self,
         input_ids: Tensor,
         attention_mask: Tensor | None,
         lora_weights: list[LayerwiseBatchedWeights],
-        lr_weights: BatchedLRWeights,
-        output_lr: Tensor,
         token_type_ids: Tensor | None = None,
         apply_lora: bool = True,
+        pooling: str = "auto",
     ) -> Tensor:
-        """Run a full forward pass for a mixed-tenant batch.
+        """Base forward with LoRA deltas, up to the (B, H) pooled output.
+
+        The seam the task wrappers encode through: same name and contract as
+        :meth:`HFEncoderWithLora.encode_pooled`, so a wrapper can hold either
+        engine without knowing which.
 
         Args:
-            input_ids:      (B, S)
-            attention_mask: (B, S) or None
-            lora_weights:   List of LayerwiseBatchedWeights, one per encoder layer
-            lr_weights:     BatchedLRWeights with coef (B, max_labels, H) and intercept (B, max_labels)
-            output_lr:      Pre-allocated output tensor (B, 1, max_labels)
-            token_type_ids: (B, S) or None
-            apply_lora:     If False, skip the LoRA delta path entirely (base-only
-                            forward). Used by benchmarks to isolate LoRA wall-clock cost.
-
-        Returns:
-            output_lr: filled with per-sample logit scores (B, 1, max_labels)
+            pooling: ``"auto"`` (default) applies this checkpoint's trained
+                pooler, ``tanh(W·CLS)`` — what :meth:`forward` has always fed
+                the LR head, so classification behaviour is unchanged. ``"cls"``
+                returns the raw CLS state and ``"mean"`` the mask-weighted mean;
+                see :mod:`latefuse.ops.pooling` for why this is not one fixed
+                choice.
         """
+        validate_pooling(pooling)
         B, S = input_ids.shape
         device = input_ids.device
 
@@ -277,7 +277,40 @@ class EncoderWithLora(PreTrainedModel):
         for layer, layer_lora in zip(self.encoder["layer"], lora_weights):
             x = layer(x, attention_mask, layer_lora, apply_lora)
 
-        pooled = self.pooler_act(self.pooler["dense"](x[:, 0]))  # CLS token
+        if pooling == "auto":
+            return self.pooler_act(self.pooler["dense"](x[:, 0]))  # CLS token
+        return pool_tokens(x, attention_mask, pooling)
+
+    def forward(
+        self,
+        input_ids: Tensor,
+        attention_mask: Tensor | None,
+        lora_weights: list[LayerwiseBatchedWeights],
+        lr_weights: BatchedLRWeights,
+        output_lr: Tensor,
+        token_type_ids: Tensor | None = None,
+        apply_lora: bool = True,
+        pooling: str = "auto",
+    ) -> Tensor:
+        """Run a full forward pass for a mixed-tenant batch.
+
+        Args:
+            input_ids:      (B, S)
+            attention_mask: (B, S) or None
+            lora_weights:   List of LayerwiseBatchedWeights, one per encoder layer
+            lr_weights:     BatchedLRWeights with coef (B, max_labels, H) and intercept (B, max_labels)
+            output_lr:      Pre-allocated output tensor (B, 1, max_labels)
+            token_type_ids: (B, S) or None
+            apply_lora:     If False, skip the LoRA delta path entirely (base-only
+                            forward). Used by benchmarks to isolate LoRA wall-clock cost.
+
+        Returns:
+            output_lr: filled with per-sample logit scores (B, 1, max_labels)
+        """
+        pooled = self.encode_pooled(
+            input_ids, attention_mask, lora_weights, token_type_ids, apply_lora,
+            pooling,
+        )
 
         LRHeadOps.predict_proba(
             pooled.unsqueeze(1),

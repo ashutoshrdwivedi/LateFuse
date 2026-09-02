@@ -12,10 +12,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: lora-serving
-  namespace: lora-serving
+  name: latefuse
+  namespace: latefuse
   labels:
-    app.kubernetes.io/name: lora-serving
+    app.kubernetes.io/name: latefuse
   annotations:
     # --- Consistent-hash sticky routing ---
     # Hash the X-Tenant-Id header to pick a backend pod.
@@ -41,13 +41,13 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: lora-serving.example.com   # Replace with your domain
+    - host: latefuse.example.com   # Replace with your domain
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: lora-serving
+                name: latefuse
                 port:
                   name: http

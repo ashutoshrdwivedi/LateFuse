@@ -38,7 +38,7 @@ echo "=== [2/8] headline LateFuse sweep (Fig 2 + scaling + rank table), 5 seeds 
 # Also includes N=40000 and 47000 at every batch size (overlapping with
 # sweep_capacity at B=32) so build_numbers.py finds the high-N rows it needs in
 # sweep_main without cross-file merging.
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --dtype fp16 --adapters 100 1000 5000 10000 20000 40000 47000 \
   --batch-sizes 8 16 32 64 128 --lora-ranks 8 \
   --extra-configs 1000:32:4 1000:32:16 1000:32:32 \
@@ -48,7 +48,7 @@ uv run python -m lora_serving.benchmark.run \
 echo "  sweep_main rc=$?"
 
 echo "=== [3/8] capacity probe (OOM ceiling on 80GB) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --dtype fp16 --adapters 20000 40000 47000 50000 --batch-sizes 32 \
   --lora-ranks 8 --seq-len 128 --warmup 50 --iters 200 \
   --out "$R/sweep_capacity.csv" > "$R/sweep_capacity.log" 2>&1

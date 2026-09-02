@@ -23,10 +23,11 @@ from torch import Tensor, nn
 from torch.utils.hooks import RemovableHandle
 from transformers import AutoModel
 
-from lora_serving.config import LoraServingConfig
-from lora_serving.ops.head import LRHeadOps
-from lora_serving.ops.lora import LoraOps
-from lora_serving.weights.batch import BatchedLRWeights, LayerwiseBatchedWeights
+from latefuse.config import LoraServingConfig
+from latefuse.ops.head import LRHeadOps
+from latefuse.ops.lora import LoraOps
+from latefuse.ops.pooling import pool_tokens, validate_pooling
+from latefuse.weights.batch import BatchedLRWeights, LayerwiseBatchedWeights
 
 # Per-layer module paths (relative to "encoder.layer.{i}.") for each logical
 # target name. HF keeps BERT's naming across the post-LN family; DeBERTa-v2
@@ -222,7 +223,7 @@ class HFEncoderWithLora(nn.Module):
         cls,
         serving_config: LoraServingConfig,
         attn_implementation: str | None = None,
-    ) -> "HFEncoderWithLora":
+    ) -> HFEncoderWithLora:
         """Load the stock HF base model and attach LoRA hooks."""
         kwargs: dict = {"torch_dtype": serving_config.dtype}
         if attn_implementation is not None:
@@ -252,7 +253,7 @@ class HFEncoderWithLora(nn.Module):
         self._hook_handles.clear()
         self.base = None
 
-    def __enter__(self) -> "HFEncoderWithLora":
+    def __enter__(self) -> HFEncoderWithLora:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
@@ -265,16 +266,23 @@ class HFEncoderWithLora(nn.Module):
         lora_weights: list[LayerwiseBatchedWeights],
         token_type_ids: Tensor | None = None,
         apply_lora: bool = True,
+        pooling: str = "auto",
     ) -> Tensor:
         """Base forward with LoRA deltas, up to the (B, H) pooled output.
-
-        Uses the checkpoint's own pooler when it has one (BERT/RoBERTa
-        family); otherwise the raw CLS hidden state (ELECTRA, DeBERTa).
 
         Raises RuntimeError if the adapter was not applied at every target
         projection — an unmodelled architecture must fail loudly rather than
         return a plausible base-only result.
+
+        Args:
+            pooling: ``"auto"`` (default) uses the checkpoint's own pooler when
+                it has one (BERT/RoBERTa family) and the raw CLS hidden state
+                when it does not (ELECTRA, DeBERTa) — the behaviour every
+                benchmark in this repo was measured under. ``"cls"`` forces raw
+                CLS even where a pooler exists; ``"mean"`` takes the
+                mask-weighted mean. See :mod:`latefuse.ops.pooling`.
         """
+        validate_pooling(pooling)
         if self.base is None:
             raise RuntimeError(
                 "this HFEncoderWithLora has been closed; its base model was "
@@ -326,10 +334,12 @@ class HFEncoderWithLora(nn.Module):
                 "the skip path instead. The base forward ran without the "
                 "adapter delta, so anything measured from it would be wrong."
             )
-        pooled = getattr(out, "pooler_output", None)
-        if pooled is None:
-            pooled = out.last_hidden_state[:, 0]
-        return pooled
+        if pooling == "auto":
+            pooled = getattr(out, "pooler_output", None)
+            if pooled is None:
+                pooled = out.last_hidden_state[:, 0]
+            return pooled
+        return pool_tokens(out.last_hidden_state, attention_mask, pooling)
 
     def forward(
         self,
@@ -340,6 +350,7 @@ class HFEncoderWithLora(nn.Module):
         output_lr: Tensor,
         token_type_ids: Tensor | None = None,
         apply_lora: bool = True,
+        pooling: str = "auto",
     ) -> Tensor:
         """Full mixed-tenant forward: encoder + batched per-tenant LR heads.
 
@@ -347,7 +358,8 @@ class HFEncoderWithLora(nn.Module):
         with per-sample logit scores (B, 1, max_labels).
         """
         pooled = self.encode_pooled(
-            input_ids, attention_mask, lora_weights, token_type_ids, apply_lora
+            input_ids, attention_mask, lora_weights, token_type_ids, apply_lora,
+            pooling,
         )
         LRHeadOps.predict_proba(
             pooled.unsqueeze(1),

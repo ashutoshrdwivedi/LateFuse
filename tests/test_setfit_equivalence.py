@@ -18,9 +18,9 @@ import pytest
 import torch
 from torch import Tensor
 
-from lora_serving.config import LoraServingConfig
-from lora_serving.ops.head import LRHeadOps
-from lora_serving.weights.batch import BatchAssembler, BatchedLRWeights
+from latefuse.config import LoraServingConfig
+from latefuse.ops.head import LRHeadOps
+from latefuse.weights.batch import BatchAssembler
 
 pytestmark = pytest.mark.skipif(
     not torch.cuda.is_available(),
@@ -30,9 +30,8 @@ pytestmark = pytest.mark.skipif(
 sklearn = pytest.importorskip(
     "sklearn", reason="scikit-learn not installed (install with `uv add --dev scikit-learn`)"
 )
-from sklearn.linear_model import LogisticRegression
 import numpy as np
-
+from sklearn.linear_model import LogisticRegression
 
 MODEL_NAME = "intfloat/multilingual-e5-small"
 LORA_RANK = 8
@@ -137,7 +136,7 @@ class TestLRHeadEquivalence:
         lr_intercepts = [intercept] * BATCH_SIZE
 
         # Use a dummy store — assemble_lr doesn't need it
-        from lora_serving.weights.store import AdapterStore
+        from latefuse.weights.store import AdapterStore
         store = AdapterStore(serving_config)
         assembler = BatchAssembler(store, serving_config)
         lr_weights = assembler.assemble_lr(lr_coefs, lr_intercepts)
@@ -192,7 +191,7 @@ class TestLRHeadEquivalence:
             lr_coefs.append(coef)
             lr_intercepts.append(intercept)
 
-        from lora_serving.weights.store import AdapterStore
+        from latefuse.weights.store import AdapterStore
         store = AdapterStore(serving_config)
         assembler = BatchAssembler(store, serving_config)
         lr_weights = assembler.assemble_lr(lr_coefs, lr_intercepts)

@@ -26,7 +26,7 @@
 # can be quoted either way without a second pod session.
 #
 # Runtime ~2h. The store is rebuilt per (seed, N, arm) because seed is the
-# outermost loop, matching lora_serving.benchmark.run: between-seed spread then
+# outermost loop, matching latefuse.benchmark.run: between-seed spread then
 # absorbs thermal and clock drift rather than only per-iteration jitter. That
 # costs ~5x the store-build time and is the single largest term in the runtime;
 # it is deliberate, not an oversight.

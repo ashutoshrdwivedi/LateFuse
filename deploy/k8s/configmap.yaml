@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: lora-serving-config
-  namespace: lora-serving
+  name: latefuse-config
+  namespace: latefuse
   labels:
-    app.kubernetes.io/name: lora-serving
+    app.kubernetes.io/name: latefuse
 data:
   # --- Model ---
   LORA_MODEL_NAME: "intfloat/multilingual-e5-small"
@@ -28,7 +28,7 @@ data:
   LORA_ADAPTER_LOCAL_DIR: "/tmp/adapters"
 
   # --- Redis ---
-  LORA_REDIS_URL: "redis://redis.lora-serving.svc.cluster.local:6379/0"
+  LORA_REDIS_URL: "redis://redis.latefuse.svc.cluster.local:6379/0"
   LORA_REDIS_CHANNEL: "lora:adapter_updates"
 
   # --- Preload (comma-separated adapter IDs to load at startup) ---
@@ -38,10 +38,10 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: lora-serving-s3-creds
-  namespace: lora-serving
+  name: latefuse-s3-creds
+  namespace: latefuse
   labels:
-    app.kubernetes.io/name: lora-serving
+    app.kubernetes.io/name: latefuse
 type: Opaque
 stringData:
   LORA_S3_ACCESS_KEY: "YOUR_DO_SPACES_ACCESS_KEY"

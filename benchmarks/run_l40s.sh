@@ -62,7 +62,7 @@ M="BAAI/bge-m3"
 TAG=l40s
 
 echo "=== [0/5] smoke test (fail fast before burning the pod) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --dtype fp16 --adapters 100 --batch-sizes 8 \
   --lora-ranks 8 --seq-len 128 --warmup 5 --iters 10 \
   --out "$R/smoke_$TAG.csv" > "$R/smoke_$TAG.log" 2>&1
@@ -76,7 +76,7 @@ uv run python -m benchmarks.profiling.model_metadata \
 echo "  metadata rc=$?"
 
 echo "=== [2/5] LateFuse sweep, full grid, 5 seeds (~2h) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --dtype fp16 \
   --adapters 100 1000 5000 10000 20000 28000 \
   --batch-sizes 8 16 32 64 128 --lora-ranks 8 \
@@ -113,7 +113,7 @@ fi
 rm -f "$R/sweep_capacity_$TAG.csv"
 
 echo "=== [3a/5] capacity probe -- expandable_segments (the shipped setting) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --dtype fp16 \
   --adapters 28000 29000 30000 --batch-sizes 32 --lora-ranks 8 \
   --seq-len 128 --warmup 50 --iters 200 \
@@ -125,7 +125,7 @@ echo "  capacity (expseg) rc=$?"
 # and the export stays in effect for everything after this block.
 echo "=== [3b/5] capacity probe -- DEFAULT allocator (the 26k comparison point) ==="
 ( unset PYTORCH_CUDA_ALLOC_CONF
-  uv run python -m lora_serving.benchmark.run \
+  uv run python -m latefuse.benchmark.run \
     --model "$M" --dtype fp16 \
     --adapters 26000 27000 28000 --batch-sizes 32 --lora-ranks 8 \
     --seq-len 128 --warmup 50 --iters 200 \
