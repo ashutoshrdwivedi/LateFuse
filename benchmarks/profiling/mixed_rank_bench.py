@@ -43,7 +43,7 @@ zero-padded inside an r_max batch produces the same logits as the same tenant
 served natively in an r_min batch, and that the two mixed implementations agree.
 The reported max|Δlogit| is the parity number to quote.
 
-Unlike `lora_serving.benchmark.synthetic`, adapters here are drawn with a
+Unlike `latefuse.benchmark.synthetic`, adapters here are drawn with a
 NON-ZERO B matrix. The shared helper zeroes B (making delta=0, which is safe for
 its own correctness checks but would make this benchmark's exactness gate
 vacuous — every arm would agree on a delta of zero). Shapes and kernels are
@@ -77,16 +77,16 @@ from torch import Tensor
 # that a second copy would drift, and both benchmarks must report provenance the
 # same way for their numbers to compose in the fact sheet.
 from benchmarks.profiling.assembly_bench import aggregate, cpu_line, env_metadata, fmt, stats
-from lora_serving.benchmark.synthetic import make_synthetic_inputs, make_synthetic_lr_weights
-from lora_serving.config import LoraServingConfig
-from lora_serving.model.encoder import EncoderWithLora
-from lora_serving.model.hf_wrapper import HFEncoderWithLora
-from lora_serving.weights.batch import (
+from latefuse.benchmark.synthetic import make_synthetic_inputs, make_synthetic_lr_weights
+from latefuse.config import LoraServingConfig
+from latefuse.model.encoder import EncoderWithLora
+from latefuse.model.hf_wrapper import HFEncoderWithLora
+from latefuse.weights.batch import (
     BatchAssembler,
     IndexSelectBatchAssembler,
     LayerwiseBatchedWeights,
 )
-from lora_serving.weights.store import AdapterStore, LoraWeight
+from latefuse.weights.store import AdapterStore, LoraWeight
 
 DTYPE_MAP = {"fp16": torch.float16, "fp32": torch.float32, "bf16": torch.bfloat16}
 
@@ -1054,7 +1054,7 @@ def main():
         args.batch_size, 1, args.num_labels, dtype=dtype, device=device
     )
 
-    # Seed outermost, matching lora_serving.benchmark.run: each pass is a full
+    # Seed outermost, matching latefuse.benchmark.run: each pass is a full
     # sweep, so between-seed spread also absorbs thermal and clock drift rather
     # than only per-iteration jitter.
     for seed in seeds:

@@ -41,19 +41,19 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from lora_serving.benchmark.synthetic import (
+from latefuse.benchmark.synthetic import (
     make_synthetic_adapters,
     make_synthetic_inputs,
     make_synthetic_lr_weights,
 )
-from lora_serving.config import LoraServingConfig
-from lora_serving.model.encoder import EncoderWithLora
-from lora_serving.weights.batch import (
+from latefuse.config import LoraServingConfig
+from latefuse.model.encoder import EncoderWithLora
+from latefuse.weights.batch import (
     BatchAssembler,
     IndexSelectBatchAssembler,
     LayerwiseBatchedWeights,
 )
-from lora_serving.weights.store import AdapterStore
+from latefuse.weights.store import AdapterStore
 
 DTYPE_MAP = {"fp16": torch.float16, "fp32": torch.float32, "bf16": torch.bfloat16}
 
@@ -354,14 +354,14 @@ def main():
     parser.add_argument("--lora-rank", type=int, default=8)
     parser.add_argument("--seq-len", type=int, default=128)
     parser.add_argument("--num-labels", type=int, default=10)
-    # 50/200 is the house protocol, shared with lora_serving.benchmark.run and
+    # 50/200 is the house protocol, shared with latefuse.benchmark.run and
     # every generality sweep, so assembly numbers compose with the model sweeps.
     parser.add_argument("--warmup", type=int, default=50)
     parser.add_argument("--iters", type=int, default=200)
     parser.add_argument(
         "--seeds", nargs="+", type=int, default=None,
         help="Repeat the full batch-size sweep once per seed (seed is the "
-             "outermost loop, matching lora_serving.benchmark.run, so "
+             "outermost loop, matching latefuse.benchmark.run, so "
              "between-seed variance also captures thermal/clock drift). Results "
              "are aggregated to mean +/- s.d. per (batch_size, variant). Default "
              "None: single unseeded run.",

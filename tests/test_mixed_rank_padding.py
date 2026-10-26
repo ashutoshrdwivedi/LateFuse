@@ -28,8 +28,8 @@ from benchmarks.profiling.mixed_rank_bench import (
     draw_native,
     parse_mix,
 )
-from lora_serving.config import LoraServingConfig
-from lora_serving.weights.batch import IndexSelectBatchAssembler
+from latefuse.config import LoraServingConfig
+from latefuse.weights.batch import IndexSelectBatchAssembler
 
 R_MIN, R_MAX = 4, 16
 

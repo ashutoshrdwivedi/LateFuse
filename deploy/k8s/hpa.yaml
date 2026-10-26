@@ -11,15 +11,15 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: lora-serving
-  namespace: lora-serving
+  name: latefuse
+  namespace: latefuse
   labels:
-    app.kubernetes.io/name: lora-serving
+    app.kubernetes.io/name: latefuse
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: lora-serving
+    name: latefuse
   minReplicas: 2
   maxReplicas: 10
 

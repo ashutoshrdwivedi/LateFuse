@@ -1,4 +1,4 @@
-"""Tests for the registration-churn microbenchmark (lora_serving.benchmark.churn).
+"""Tests for the registration-churn microbenchmark (latefuse.benchmark.churn).
 
 The point of the benchmark is that the timed path is the *production* one, so
 the tests that matter are the ones establishing that the corpus files really do
@@ -11,15 +11,15 @@ import numpy as np
 import pytest
 import torch
 
-from lora_serving.benchmark.churn import (
+from latefuse.benchmark.churn import (
     Registrar,
     _zipf_probabilities,
     build_corpus,
     ci95,
     corpus_key_fn,
 )
-from lora_serving.config import LoraServingConfig
-from lora_serving.weights.store import AdapterStore, LoraWeight
+from latefuse.config import LoraServingConfig
+from latefuse.weights.store import AdapterStore, LoraWeight
 
 
 @pytest.fixture

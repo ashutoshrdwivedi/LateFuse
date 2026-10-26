@@ -1,6 +1,6 @@
 # Deploying LoRA Multi-Tenant Serving to Kubernetes
 
-Production deployment of the `lora_serving` inference engine on DigitalOcean Managed Kubernetes with GPU droplets.
+Production deployment of the `latefuse` inference engine on DigitalOcean Managed Kubernetes with GPU droplets.
 
 ## Architecture
 
@@ -59,11 +59,11 @@ Production deployment of the `lora_serving` inference engine on DigitalOcean Man
 cd /path/to/LateFuse
 
 # Build (bakes in the base model — ~2GB image)
-docker build -f deploy/Dockerfile -t lora-serving:latest .
+docker build -f deploy/Dockerfile -t latefuse:latest .
 
 # Tag & push to DigitalOcean Container Registry
-docker tag lora-serving:latest registry.digitalocean.com/YOUR_REGISTRY/lora-serving:latest
-docker push registry.digitalocean.com/YOUR_REGISTRY/lora-serving:latest
+docker tag latefuse:latest registry.digitalocean.com/YOUR_REGISTRY/latefuse:latest
+docker push registry.digitalocean.com/YOUR_REGISTRY/latefuse:latest
 ```
 
 ### 2. Configure Secrets
@@ -75,10 +75,10 @@ Edit `deploy/k8s/configmap.yaml` and set:
 - `LORA_PRELOAD_ADAPTER_IDS` → list of adapter IDs to load at startup
 
 Also update `deploy/k8s/deployment.yaml`:
-- Replace `registry.digitalocean.com/YOUR_REGISTRY/lora-serving:latest` with your actual registry URL
+- Replace `registry.digitalocean.com/YOUR_REGISTRY/latefuse:latest` with your actual registry URL
 
 And `deploy/k8s/ingress.yaml`:
-- Replace `lora-serving.example.com` with your domain
+- Replace `latefuse.example.com` with your domain
 
 ### 3. Deploy to Kubernetes
 
@@ -96,17 +96,17 @@ kubectl apply -f deploy/k8s/ingress.yaml
 kubectl apply -f deploy/k8s/hpa.yaml
 
 # Watch pods come up
-kubectl -n lora-serving get pods -w
+kubectl -n latefuse get pods -w
 ```
 
 ### 4. Test Inference
 
 ```bash
 # Wait for pods to be ready
-kubectl -n lora-serving wait --for=condition=ready pod -l app.kubernetes.io/name=lora-serving --timeout=300s
+kubectl -n latefuse wait --for=condition=ready pod -l app.kubernetes.io/name=latefuse --timeout=300s
 
 # Send a request (with X-Tenant-Id for sticky routing)
-curl -X POST https://lora-serving.example.com/predict \
+curl -X POST https://latefuse.example.com/predict \
   -H "Content-Type: application/json" \
   -H "X-Tenant-Id: tenant_42" \
   -d '{"tenant_id": "tenant_42", "text": "This is a great product!"}'
@@ -120,7 +120,7 @@ When a tenant retrains their adapter, publish an update to Redis:
 from deploy.server.reload import publish_adapter_update
 
 publish_adapter_update(
-    redis_url="redis://redis.lora-serving.svc.cluster.local:6379/0",
+    redis_url="redis://redis.latefuse.svc.cluster.local:6379/0",
     channel="lora:adapter_updates",
     adapter_id="tenant_42",
     s3_key="adapters/tenant_42/pytorch_adapter.bin",
@@ -129,13 +129,13 @@ publish_adapter_update(
 
 Or via `redis-cli`:
 ```bash
-kubectl -n lora-serving exec -it deploy/redis -- redis-cli
+kubectl -n latefuse exec -it deploy/redis -- redis-cli
 > PUBLISH lora:adapter_updates '{"adapter_id": "tenant_42", "s3_key": "adapters/tenant_42/pytorch_adapter.bin"}'
 ```
 
 Or via the admin API:
 ```bash
-curl -X POST https://lora-serving.example.com/admin/reload \
+curl -X POST https://latefuse.example.com/admin/reload \
   -H "Content-Type: application/json" \
   -d '{"adapter_id": "tenant_42", "s3_key": "adapters/tenant_42/pytorch_adapter.bin"}'
 ```

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 from torch import Tensor
 
-from lora_serving.config import LoraServingConfig
+from latefuse.config import LoraServingConfig
 
 # Maps (layer_idx, module_name) → tensor key in the adapter .bin file.
 # Callers provide this to make loading model-agnostic.
@@ -94,9 +94,32 @@ class AdapterStore:
                         that way; pass the real alpha for adapters where it
                         differs from the rank.
         """
+        state_dict = torch.load(
+            path, map_location=self._config.device, weights_only=True
+        )
+        self.load_from_state_dict(
+            adapter_id, state_dict, key_fn, lora_alpha=lora_alpha
+        )
+
+    def load_from_state_dict(
+        self,
+        adapter_id: str,
+        state_dict: dict,
+        key_fn: KeyResolverFn,
+        lora_alpha: float | None = None,
+    ) -> None:
+        """Cache an adapter from an already-loaded state dict.
+
+        The half of :meth:`load_from_file` that is not file I/O, split out so
+        callers holding a state dict from elsewhere -- a ``.safetensors`` file, a
+        remote fetch, an in-memory build -- do not have to round-trip it through
+        a temporary ``.bin``. :mod:`latefuse.loaders` uses this to read PEFT
+        adapters, which ship as safetensors that :func:`torch.load` cannot open.
+
+        Args and semantics are otherwise identical to :meth:`load_from_file`.
+        """
         cfg = self._config
         scale = 1.0 if lora_alpha is None else lora_alpha / cfg.lora_rank
-        state_dict = torch.load(path, map_location=cfg.device, weights_only=True)
         weight = LoraWeight(cfg)
 
         a_by_module: dict[str, Tensor] = {}
@@ -105,6 +128,14 @@ class AdapterStore:
             a_tensors, b_tensors = [], []
             for i in range(cfg.num_layers):
                 key_a, key_b = key_fn(i, module)
+                for key in (key_a, key_b):
+                    if key not in state_dict:
+                        raise KeyError(
+                            f"adapter '{adapter_id}' has no tensor '{key}'. The "
+                            f"key layout does not match this key_fn; available "
+                            f"keys start with "
+                            f"{sorted(state_dict)[:3] if state_dict else '[]'}"
+                        )
                 a_tensors.append(state_dict[key_a])
                 b_tensors.append(state_dict[key_b])
             a_by_module[module] = torch.stack(a_tensors)
@@ -131,9 +162,14 @@ class AdapterStore:
         the seam for callers that need to control how the tensors get filled --
         e.g. staging through a pinned host buffer so the host-to-device copy can
         overlap with compute, which the benchmark in
-        :mod:`lora_serving.benchmark.churn` measures against the plain path.
+        :mod:`latefuse.benchmark.churn` measures against the plain path.
         """
         self._store[adapter_id] = weight
+
+    @property
+    def config(self) -> LoraServingConfig:
+        """The serving config these adapters were sized from."""
+        return self._config
 
     def get(self, adapter_id: str) -> LoraWeight:
         """Retrieve a pre-loaded adapter by ID."""
@@ -152,7 +188,7 @@ class AdapterStore:
 
         The order is stable for the lifetime of the store and defines the row
         index each adapter occupies in a packed tensor (see
-        :class:`~lora_serving.weights.batch.IndexSelectBatchAssembler`).
+        :class:`~latefuse.weights.batch.IndexSelectBatchAssembler`).
         """
         return list(self._store.keys())
 

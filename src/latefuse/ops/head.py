@@ -34,8 +34,19 @@ class LRHeadOps:
             Tenants with fewer than max_labels classes have zero-padded coef/intercept.
             Callers should slice [:num_labels] per sample before applying softmax.
         """
-        assert pooled.is_cuda, "pooled must be on GPU"
-        assert coef.is_cuda, "coef must be on GPU"
+        # Device *match* rather than "must be CUDA": on a serving run every one
+        # of these lives on config.device (a GPU), so this enforces exactly the
+        # same thing, while letting CPU-only tests exercise this code path
+        # instead of a separate one. Same reasoning as LoraOps.shrink.
+        assert coef.device == pooled.device, (
+            f"pooled on {pooled.device} but coef on {coef.device}"
+        )
+        assert intercept.device == pooled.device, (
+            f"pooled on {pooled.device} but intercept on {intercept.device}"
+        )
+        assert out.device == pooled.device, (
+            f"pooled on {pooled.device} but out on {out.device}"
+        )
         torch.bmm(pooled, coef.transpose(1, 2), out=out)
         torch.add(out, intercept.unsqueeze(1), out=out)
         return out

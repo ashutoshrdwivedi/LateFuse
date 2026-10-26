@@ -72,7 +72,7 @@ M="microsoft/deberta-v2-xlarge"
 TAG=deberta
 
 echo "=== [0/5] smoke test (fail fast before burning the pod) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --engine hf --dtype fp16 --adapters 100 --batch-sizes 8 \
   --lora-ranks 8 --target-modules value --seq-len 128 --warmup 5 --iters 10 \
   --out "$R/smoke_$TAG.csv" > "$R/smoke_$TAG.log" 2>&1
@@ -99,7 +99,7 @@ echo "  metadata rc=$?"
 # paper's rationale for not running ranks as a separate later sweep.
 # 7 N x 5 B + 3 rank cells = 38 configs x 5 seeds = 190 runs.
 echo "=== [2/5] LateFuse sweep, full grid, 5 seeds (~2h50m) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --engine hf --dtype fp16 \
   --adapters 100 1000 5000 10000 20000 40000 60000 \
   --batch-sizes 8 16 32 64 128 --lora-ranks 8 --target-modules value \
@@ -123,7 +123,7 @@ fi
 # follow-up. An OOM cell is recorded as a status=oom row, and this probe omits
 # --require-complete, so the extra cell is nearly free and self-documenting.
 echo "=== [3/5] capacity probe (OOM ceiling) ==="
-uv run python -m lora_serving.benchmark.run \
+uv run python -m latefuse.benchmark.run \
   --model "$M" --engine hf --dtype fp16 \
   --adapters 56000 60000 64000 68000 --batch-sizes 32 --lora-ranks 8 \
   --target-modules value --seq-len 128 --warmup 50 --iters 200 \

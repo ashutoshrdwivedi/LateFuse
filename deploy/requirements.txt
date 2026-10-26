@@ -1,4 +1,4 @@
-# Server dependencies (beyond lora-serving core)
+# Server dependencies (beyond latefuse core)
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 pydantic-settings>=2.0

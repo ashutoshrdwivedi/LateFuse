@@ -1,0 +1,78 @@
+name: Release
+
+# Publishes to PyPI when a version tag is pushed:
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Authentication is PyPI Trusted Publishing (OIDC) — no API token is stored in
+# this repository. Configure it once at
+# https://pypi.org/manage/project/latefuse/settings/publishing/ with:
+#   owner: ashutoshrdwivedi   repo: LateFuse
+#   workflow: release.yml     environment: pypi
+#
+# For the very first release, PyPI has no project to attach a publisher to yet;
+# use the "pending publisher" form under Your projects -> Publishing, or upload
+# 0.1.0 once by hand with `uv publish --token ...`.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Run the CPU test suite
+        # The real_checkpoints tests need CUDA and multi-GB downloads.
+        run: uv run --python ${{ matrix.python-version }} --extra dev
+          pytest tests/ -m "not real_checkpoints" -q
+      - name: Lint
+        run: uv run --python ${{ matrix.python-version }} --extra dev
+          ruff check src/latefuse tests
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv build
+      - name: Check the distribution metadata
+        run: uv run --with twine twine check dist/*
+      - name: Install the wheel clean and import it
+        # Catches packaging faults the source tree hides: a subpackage missing
+        # from packages.find, an absent py.typed, a dependency that is only
+        # ever satisfied by the dev environment.
+        run: |
+          python -m venv /tmp/check
+          /tmp/check/bin/pip install --quiet dist/*.whl
+          cd /tmp && /tmp/check/bin/python -c "
+          import latefuse
+          missing = [n for n in latefuse.__all__ if not hasattr(latefuse, n)]
+          assert not missing, missing
+          print('latefuse', latefuse.__version__, '-', len(latefuse.__all__), 'exports')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # required for Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

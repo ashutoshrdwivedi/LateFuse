@@ -1,13 +1,13 @@
 """End-to-end model tests: forward pass shape and correctness."""
 
-import torch
 import pytest
-from lora_serving.config import LoraServingConfig
-from lora_serving.model.encoder import EncoderWithLora
-from lora_serving.weights.store import AdapterStore
-from lora_serving.weights.batch import BatchAssembler
-from lora_serving.benchmark.synthetic import make_synthetic_lr_weights
+import torch
 
+from latefuse.benchmark.synthetic import make_synthetic_lr_weights
+from latefuse.config import LoraServingConfig
+from latefuse.model.encoder import EncoderWithLora
+from latefuse.weights.batch import BatchAssembler
+from latefuse.weights.store import AdapterStore
 
 # Skip all tests in this module if no GPU available — model tests require GPU
 pytestmark = pytest.mark.skipif(

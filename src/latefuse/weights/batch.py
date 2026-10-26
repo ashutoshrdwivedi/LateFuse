@@ -4,8 +4,8 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from lora_serving.config import LoraServingConfig
-from lora_serving.weights.store import AdapterStore
+from latefuse.config import LoraServingConfig
+from latefuse.weights.store import AdapterStore
 
 
 class LayerwiseBatchedWeights:
